@@ -1,0 +1,1 @@
+"""Broker adapters (PaperBroker, LiveBrokerStub)."""

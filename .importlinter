@@ -1,0 +1,25 @@
+[importlinter]
+root_package = tsys
+
+[importlinter:contract:layers]
+name = Clean architecture layers
+type = layers
+layers =
+    tsys.frameworks
+    tsys.adapters
+    tsys.application
+    tsys.domain
+
+[importlinter:contract:domain-purity]
+name = domain may import only stdlib + numpy
+type = forbidden
+source_modules =
+    tsys.domain
+forbidden_modules =
+    ccxt
+    pandas
+    aiosqlite
+    sqlite3
+    websockets
+    pydantic
+    oandapyV20

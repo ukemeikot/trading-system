@@ -1,0 +1,35 @@
+# Per-strategy parameters. See docs/SPEC.md Part D. TODO(M4): consumed by domain strategies.
+
+quiet_scalper:
+  risk_per_trade_pct: 0.75
+  max_concurrent_positions: 1
+  daily_loss_limit_pct: 2.0
+  hold_cap_minutes: 30
+  vwap_band_k: 2.0
+  atr_stop_mult: 1.2            # stop = entry -/+ 1.2 * ATR(14, 1m)
+  entry_limit_timeout_minutes: 2
+  sessions:
+    crypto: ["07:00-16:00"]
+    GBP/USD: ["08:00-11:00", "13:30-16:00"]
+  blackout:
+    pre_entry_block_minutes: 30   # T-30: no new entries
+    force_flat_minutes: 10        # T-10: force flat
+    reentry_after_minutes: 45     # T+45: earliest re-entry
+  regime:
+    atr_median_window_days: 20
+    trend_veto_mult: 0.5          # |EMA20 - EMA200| < 0.5 * ATR(14, 5m)
+
+momentum:
+  timeframe: 4h
+  ema_fast: 20
+  ema_slow: 50
+  atr_period: 14
+  atr_stop_mult: 2.0
+
+meanrev:
+  timeframe: 1h
+  rsi_period: 14
+  rsi_oversold: 30
+  rsi_overbought: 70
+  atr_period: 14
+  atr_stop_mult: 1.5

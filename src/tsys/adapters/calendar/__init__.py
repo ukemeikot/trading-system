@@ -1,0 +1,1 @@
+"""Economic-calendar source adapters."""

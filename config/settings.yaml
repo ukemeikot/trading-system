@@ -1,0 +1,38 @@
+# System settings — single source of runtime config. See docs/SPEC.md Part C.
+# The app MUST refuse to start if mode is anything other than "paper" (see Part F4).
+mode: paper
+
+pairs:
+  crypto: [BTC/USDT, ETH/USDT]
+  forex: [GBP/USD]
+
+timeframes: [1m, 1h, 4h]
+
+# Cost model (pessimistic defaults — Part C1). TODO(M1): consumed by domain CostModel.
+costs:
+  crypto:
+    taker_fee_pct: 0.10        # per side
+    maker_fee_pct: 0.02        # post-only entries
+    slippage_pct: 0.05         # per fill
+  forex:
+    GBP/USD:
+      spread_pips: 1.8         # applied on entry and exit
+
+# Risk manager (system-wide defaults — Part C2). TODO(M1).
+risk:
+  risk_per_trade_pct: 1.0
+  max_concurrent_positions: 3
+  max_positions_per_pair: 1
+  daily_loss_limit_pct: 3.0
+  kill_switch_drawdown_pct: 15.0
+
+# Circuit breakers (Part D2.3b). TODO(M5).
+circuit_breakers:
+  vol_spike_mult: 3.0
+  vol_spike_halt_minutes: 60
+  spread_blowout_mult: 2.5
+  consecutive_loss_halt: 3
+
+calendar:
+  path: config/calendar.csv
+  stale_after_days: 7

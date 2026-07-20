@@ -1,0 +1,16 @@
+# systemd unit for paper-trading service. See docs/SPEC.md M5 / F4. TODO(M5).
+[Unit]
+Description=tsys paper trading engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/trading-system
+EnvironmentFile=/opt/trading-system/.env
+ExecStart=/opt/trading-system/.venv/bin/python -m tsys.frameworks.entrypoints.main_paper
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

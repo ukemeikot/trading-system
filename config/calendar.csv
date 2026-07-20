@@ -1,0 +1,6 @@
+# High-impact scheduled economic events (manual-import fallback). See SPEC D2.3.
+# Paste weekly from a free economic calendar (Forex Factory / investing.com export).
+# Times are UTC. If this file is >7 days old, the strategy refuses to trade forex.
+timestamp_utc,country,event,impact
+2026-07-16T12:00:00Z,UK,BoE Rate Decision,high
+2026-07-15T12:30:00Z,US,CPI,high
