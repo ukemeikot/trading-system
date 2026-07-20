@@ -1,5 +1,6 @@
 [importlinter]
 root_package = tsys
+include_external_packages = True
 
 [importlinter:contract:layers]
 name = Clean architecture layers

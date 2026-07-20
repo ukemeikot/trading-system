@@ -1,18 +1,39 @@
-# Placeholder project metadata — dependencies pinned in M0. See docs/SPEC.md Part B1.
+# Project metadata & pinned dependencies. Package manager: pip + pyproject.
+# See docs/SPEC.md Part B1. Versions pinned to minimum-compatible lower bounds
+# (upper caps avoided so security patches flow; regenerate a constraints file to lock).
 [project]
 name = "tsys"
-version = "0.0.0"
+version = "0.1.0"
 description = "Event-driven, paper-trading-first multi-market trading system."
+readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
 dependencies = [
-    # Pinned in M0. Core: numpy, pandas, pyarrow, ccxt, pydantic, aiosqlite,
-    # structlog, uvloop; backtest lib (vectorbt OR backtesting.py) chosen in M3.
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "pyarrow>=14.0",
+    "ccxt>=4.2",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "PyYAML>=6.0",
+    "aiosqlite>=0.19",
+    "structlog>=24.1",
+    "backtesting>=0.3.3",
+    "uvloop>=0.19; sys_platform != 'win32'",
 ]
 
 [project.optional-dependencies]
 dev = [
-    # pytest, pytest-asyncio, import-linter, mypy, ruff — pinned in M0.
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "import-linter>=2.0",
+    "mypy>=1.8",
+    "ruff>=0.3",
+    "types-PyYAML>=6.0",
 ]
+# Forex adapter (OANDA v20). Optional so crypto-only installs stay lean.
+forex = ["oandapyV20>=0.7"]
 
 [build-system]
 requires = ["hatchling"]
@@ -24,7 +45,22 @@ packages = ["src/tsys"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
-python_version = "3.11"
-# Part B5: mypy --strict on domain + application at minimum.
+# 3.12 grammar so mypy can parse numpy's PEP 695 stubs. Runtime still supports 3.11
+# (we use no 3.12-only syntax); this only affects the grammar mypy parses with.
+python_version = "3.12"
+mypy_path = "src"
+packages = ["tsys"]
+# Part B5: strict on domain + application at minimum (enforced in CI on those packages).
+warn_unused_ignores = true
+warn_redundant_casts = true

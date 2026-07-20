@@ -102,4 +102,19 @@ Fund only if paper trading shows, over **≥8–12 continuous weeks with no mid-
 
 ## Project status
 
-Bootstrapping. Implementation proceeds **milestone by milestone (M0 → M6)** per spec Part E; order and gates do not change. See [docs/SPEC.md](docs/SPEC.md#part-e--milestones).
+Implementation proceeds **milestone by milestone (M0 → M6)** per spec Part E; order and gates do not change. See [docs/SPEC.md](docs/SPEC.md#part-e--milestones).
+
+- **M0 — Skeleton & guardrails** ✅ CI (ruff + import-linter + mypy --strict + pytest), config with `mode: live` refusal, JSON logging, port ABCs, `LiveBrokerStub`. A forbidden import in `domain/` fails the import-linter contract.
+- **M1 — Domain core** ✅ Entities, values, indicators (atr/vwap/ema/rsi), `CostModel` (exact Decimal cost math, F1 round-trip property test), `PositionSizer` (min-notional floor for $100 accounts), `RiskPolicy`, `RegimeClassifier` — 47 tests, `mypy --strict` clean.
+- **M2 — Data in** ⬜ next.
+
+### Dev quickstart
+
+```bash
+python -m venv .venv && . .venv/Scripts/activate   # (Windows: .venv\Scripts\activate)
+pip install -e ".[dev]"
+ruff check src tests
+lint-imports
+mypy --strict src/tsys/domain src/tsys/application
+pytest
+```

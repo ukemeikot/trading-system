@@ -1,0 +1,23 @@
+# Local guardrails mirroring CI. Install: pre-commit install
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: local
+    hooks:
+      - id: import-linter
+        name: import-linter (clean architecture layers)
+        entry: lint-imports
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      - id: mypy-domain-application
+        name: mypy --strict (domain + application)
+        entry: mypy --strict src/tsys/domain src/tsys/application
+        language: system
+        pass_filenames: false
+        types: [python]
