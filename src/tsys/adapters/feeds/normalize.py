@@ -29,33 +29,32 @@ def candle_from_ccxt(row: Sequence[float], pair: Pair, timeframe: str) -> Candle
     )
 
 
-def candle_from_oanda(candle: dict, pair: Pair, timeframe: str) -> Candle:
-    """OANDA v20 candle dict -> Candle.
+def candle_from_twelvedata(value: dict, pair: Pair, timeframe: str) -> Candle:
+    """Twelve Data time_series value -> Candle.
 
-    OANDA shape: {"time": "2024-01-02T08:00:00.000000000Z", "volume": 123,
-                  "mid": {"o": "1.2", "h": "1.3", "l": "1.1", "c": "1.25"}}.
-    We read mid prices (bid/ask spread is modeled by the CostModel, not baked in).
+    Shape: {"datetime": "2024-01-02 08:00:00", "open": "1.27", "high": "1.28",
+            "low": "1.26", "close": "1.275"[, "volume": "0"]}.
+    Forex series carry no meaningful volume (spread pricing) -> defaults to 0.0.
+    (OANDA was the original spec source but does not accept Nigerian accounts;
+    Twelve Data is a key-only data feed, and paper trading needs only data.)
     """
-    ohlc = candle["mid"]
     return Candle(
-        ts=_parse_oanda_time(candle["time"]),
+        ts=_parse_twelvedata_time(value["datetime"]),
         pair=pair,
         timeframe=timeframe,
-        open=float(ohlc["o"]),
-        high=float(ohlc["h"]),
-        low=float(ohlc["l"]),
-        close=float(ohlc["c"]),
-        volume=float(candle["volume"]),
+        open=float(value["open"]),
+        high=float(value["high"]),
+        low=float(value["low"]),
+        close=float(value["close"]),
+        volume=float(value.get("volume", 0.0) or 0.0),
     )
 
 
-def _parse_oanda_time(raw: str) -> datetime:
-    """OANDA RFC3339 timestamps carry nanosecond precision; Python parses up to
-    microseconds, so truncate the fractional part to 6 digits."""
-    s = raw.replace("Z", "+00:00")
-    if "." in s:
-        head, _, tail = s.partition(".")
-        frac, _, tz = tail.partition("+")
-        s = f"{head}.{frac[:6]}+{tz}" if tz else f"{head}.{frac[:6]}"
+def _parse_twelvedata_time(raw: str) -> datetime:
+    """Twelve Data timestamps are 'YYYY-MM-DD HH:MM:SS' (UTC when timezone=UTC is
+    requested) or a bare date for daily bars."""
+    s = raw.strip().replace(" ", "T")
+    if "T" not in s:  # daily bar: date only
+        s = f"{s}T00:00:00"
     dt = datetime.fromisoformat(s)
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)

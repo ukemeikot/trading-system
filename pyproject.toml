@@ -18,7 +18,6 @@ dependencies = [
     "PyYAML>=6.0",
     "aiosqlite>=0.19",
     "structlog>=24.1",
-    "backtesting>=0.3.3",
     "uvloop>=0.19; sys_platform != 'win32'",
 ]
 
@@ -32,8 +31,7 @@ dev = [
     "ruff>=0.3",
     "types-PyYAML>=6.0",
 ]
-# Forex adapter (OANDA v20). Optional so crypto-only installs stay lean.
-forex = ["oandapyV20>=0.7"]
+# Forex data source is Twelve Data over stdlib urllib — no extra dependency needed.
 
 [build-system]
 requires = ["hatchling"]

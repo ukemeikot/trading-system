@@ -2,8 +2,8 @@
 
 Iterates pairs x timeframes, fetches historical candles from the per-market
 HistoricalDataSource, and persists them via the CandleRepository. Forex degrades
-gracefully: if no forex source is wired (OANDA creds absent), those pairs are
-skipped with a clear log line and crypto still downloads.
+gracefully: if no forex source is wired (data-provider key absent), those pairs
+are skipped with a clear log line and crypto still downloads.
 """
 
 from __future__ import annotations

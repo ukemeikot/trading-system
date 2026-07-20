@@ -62,8 +62,14 @@ class Tick:
 
 @dataclass(frozen=True, slots=True)
 class Signal:
-    """A strategy's intent. Pure output of on_candle(); carries the stop the risk
-    manager will enforce (stop-less entries are rejected — C2)."""
+    """A strategy's intent. Pure output of on_candle(); carries the full order
+    intent so the engine/broker can act faithfully without knowing the strategy.
+
+    For ENTER: stop_price is required (stop-less entries are rejected — C2);
+    order_type/limit_price describe how to enter (MARKET fills at next candle open;
+    POST_ONLY/LIMIT rests at limit_price for maker fills); target_price and
+    max_hold_minutes drive managed exits. For EXIT: only kind/direction matter.
+    """
 
     ts: datetime
     pair: Pair
@@ -71,6 +77,9 @@ class Signal:
     direction: Direction
     stop_price: float | None = None
     target_price: float | None = None
+    order_type: OrderType = OrderType.MARKET
+    limit_price: float | None = None
+    max_hold_minutes: int | None = None
     reason: str = ""
     meta: dict[str, object] = field(default_factory=dict)
 

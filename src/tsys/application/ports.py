@@ -10,9 +10,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Sequence
 from datetime import datetime
+from typing import TYPE_CHECKING, Any
 
 from tsys.domain.entities import Candle, Fill, NewsEvent, Order, Position, Tick
 from tsys.domain.values import Pair
+
+if TYPE_CHECKING:
+    from tsys.application.dto import BacktestConfig, BacktestResult
+    from tsys.domain.strategies.base import Strategy
 
 
 class Clock(ABC):
@@ -123,4 +128,22 @@ class LatencyRecorder(ABC):
 
     @abstractmethod
     async def record(self, stage: str, micros: float) -> None:
+        ...
+
+
+class BacktestEngine(ABC):
+    """Runs a pure strategy over closed candles with the shared CostModel.
+
+    Quarantined behind a port so a future engine (vectorbt/Rust) can slot in. The
+    default adapter is a custom event-driven engine that fills via the SAME
+    domain CostModel the PaperBroker uses — so backtest and paper costs cannot
+    diverge (SPEC B4.3), and the API is lookahead-impossible by construction."""
+
+    @abstractmethod
+    def run(
+        self,
+        strategy: Strategy[Any],
+        candles: Sequence[Candle],
+        config: BacktestConfig,
+    ) -> BacktestResult:
         ...

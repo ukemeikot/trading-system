@@ -15,7 +15,7 @@ from datetime import timedelta
 from tsys.adapters.calendar.csv_source import CsvCalendarSource
 from tsys.adapters.clock import SystemClock
 from tsys.adapters.feeds.ccxt_history import CcxtHistory
-from tsys.adapters.feeds.oanda_history import OandaHistory, make_oanda_client
+from tsys.adapters.feeds.twelvedata_history import TwelveDataHistory
 from tsys.adapters.persistence.parquet_store import ParquetCandleStore
 from tsys.application.ports import HistoricalDataSource
 from tsys.application.use_cases.download_history import DownloadHistory
@@ -40,13 +40,13 @@ def main() -> None:
     end = clock.now()
     start = end - timedelta(days=round(args.years * 365))
 
-    # Build per-market data sources. Forex is None unless OANDA creds are present.
+    # Build per-market data sources. Forex is None unless a Twelve Data key is present.
     forex_source: HistoricalDataSource | None = None
-    if secrets.has_oanda:
-        assert secrets.oanda_api_token is not None
-        forex_source = OandaHistory(make_oanda_client(secrets.oanda_api_token))
+    if secrets.has_forex:
+        assert secrets.twelvedata_api_key is not None
+        forex_source = TwelveDataHistory(secrets.twelvedata_api_key)
     else:
-        log.warning("oanda.creds_absent", action="forex download skipped; crypto continues")
+        log.warning("forex.creds_absent", action="forex download skipped; crypto continues")
 
     sources: dict[Market, HistoricalDataSource | None] = {
         Market.CRYPTO: CcxtHistory(),

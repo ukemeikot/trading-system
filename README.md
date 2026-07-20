@@ -53,25 +53,28 @@ See Part D of the spec for full rules.
 git clone https://github.com/ukemeikot/trading-system.git
 cd trading-system
 
-# install (once pyproject.toml is in place — M0)
-uv sync            # or: pip install -e .
+# install
+pip install -e ".[dev]"
 
 # configure secrets (optional — crypto runs without them)
 cp .env.example .env
-# edit .env with your OANDA practice credentials
+# edit .env with your Twelve Data API key (forex only)
 ```
 
-### Getting an OANDA practice token
+### Getting a forex data key (Twelve Data)
 
-1. Create a free demo account at <https://www.oanda.com/> (fxTrade Practice).
-2. In the account portal, go to **Manage API Access** and generate a personal access token.
-3. Copy your **Account ID** (format `xxx-xxx-xxxxxxxx-xxx`).
-4. Put both into `.env`:
+OANDA (the spec's original source) does not accept Nigerian accounts. Because this
+system is **paper-only** — fills are simulated by `PaperBroker` + the shared
+`CostModel` — forex needs only a **data feed**, not a broker. Twelve Data is a
+key-only signup with no brokerage KYC:
+
+1. Sign up free at <https://twelvedata.com/>.
+2. Copy your **API key** from the dashboard.
+3. Put it into `.env`:
    ```
-   OANDA_API_TOKEN=your_token_here
-   OANDA_ACCOUNT_ID=your_account_id_here
+   TWELVEDATA_API_KEY=your_key_here
    ```
-If these are absent, forex components degrade gracefully and crypto still runs.
+If absent, forex components degrade gracefully and crypto still runs.
 
 ## Running (entrypoints)
 
@@ -106,14 +109,17 @@ Implementation proceeds **milestone by milestone (M0 → M6)** per spec Part E; 
 
 - **M0 — Skeleton & guardrails** ✅ CI (ruff + import-linter + mypy --strict + pytest), config with `mode: live` refusal, JSON logging, port ABCs, `LiveBrokerStub`. A forbidden import in `domain/` fails the import-linter contract.
 - **M1 — Domain core** ✅ Entities, values, indicators (atr/vwap/ema/rsi), `CostModel` (exact Decimal cost math, F1 round-trip property test), `PositionSizer` (min-notional floor for $100 accounts), `RiskPolicy`, `RegimeClassifier` — 47 tests, `mypy --strict` clean.
-- **M2 — Data in** ✅ `DownloadHistory` + `CcxtHistory`/`OandaHistory` (lazy SDK imports) + `ParquetCandleStore`, boundary normalization proving an **identical Candle schema across markets**, `CsvCalendarSource` + `ImportCalendar` with the >7-day stale-calendar failsafe. Forex degrades gracefully without OANDA creds. 69 tests.
-- **M3 — Backtester** ⬜ next.
-
-Run the downloader (crypto needs no keys; forex is skipped without OANDA creds):
+- **M2 — Data in** ✅ `DownloadHistory` + `CcxtHistory`/forex history (lazy SDK imports) + `ParquetCandleStore`, boundary normalization proving an **identical Candle schema across markets**, `CsvCalendarSource` + `ImportCalendar` with the >7-day stale-calendar failsafe. Forex degrades gracefully without creds. 69 tests.
+- **M3 — Backtester** ✅ Custom **event-driven engine** that fills via the *same* domain `CostModel` the PaperBroker uses (backtest == paper by construction), **lookahead-impossible** (entries fill at the next bar, never the signal-candle close), risk + sizing enforced, next-open/stop/target/time-stop exits. `RunBacktest` + `RunWalkForward`, buy-and-hold & random-entry baselines, cost-drag / breakeven-win-rate reporting. 81 tests. *(backtesting.py was dropped as the engine — its flat-commission broker can't express our maker/taker + spread + slippage + post-only fills without diverging from paper; see the engine module docstring.)*
+- **M4 — Strategies & validation** ⬜ next.
 
 ```bash
-python -m tsys.frameworks.entrypoints.main_download --years 2
+python -m tsys.frameworks.entrypoints.main_download --years 2               # crypto needs no keys
+python -m tsys.frameworks.entrypoints.main_backtest --strategy buy_and_hold --pair BTC/USDT --timeframe 1h
+python -m tsys.frameworks.entrypoints.main_walkforward --strategy buy_and_hold --pair BTC/USDT --timeframe 1h
 ```
+
+> **Forex data source:** OANDA does not accept Nigerian accounts. Because this system is paper-only (fills are simulated by `PaperBroker` + `CostModel`), forex needs only a **data feed**, not a broker — the adapter targets **Twelve Data** (key-only signup, GBP/USD). See `.env.example`.
 
 ### Dev quickstart
 

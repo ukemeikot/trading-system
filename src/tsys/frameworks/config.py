@@ -73,19 +73,19 @@ class AppSettings(BaseModel):
 
 
 class Secrets(BaseSettings):
-    """Secrets from .env / environment. Absent OANDA creds -> forex degrades
-    gracefully; crypto still runs (SPEC B1)."""
+    """Secrets from .env / environment. Absent forex creds -> forex degrades
+    gracefully; crypto still runs (SPEC B1). Forex data source is Twelve Data
+    (OANDA does not accept Nigerian accounts; paper trading needs only data)."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    oanda_api_token: str | None = None
-    oanda_account_id: str | None = None
+    twelvedata_api_key: str | None = None
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
 
     @property
-    def has_oanda(self) -> bool:
-        return bool(self.oanda_api_token and self.oanda_account_id)
+    def has_forex(self) -> bool:
+        return bool(self.twelvedata_api_key)
 
 
 def load_settings(path: str | Path = "config/settings.yaml") -> AppSettings:

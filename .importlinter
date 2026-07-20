@@ -23,4 +23,3 @@ forbidden_modules =
     sqlite3
     websockets
     pydantic
-    oandapyV20
