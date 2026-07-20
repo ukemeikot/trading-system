@@ -93,6 +93,12 @@ def load_settings(path: str | Path = "config/settings.yaml") -> AppSettings:
     return AppSettings.model_validate(raw)
 
 
+def load_strategies(path: str | Path = "config/strategies.yaml") -> dict[str, object]:
+    """Per-strategy params (strategies.yaml), passed to the strategy registry."""
+    data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
 def ensure_paper_mode(settings: AppSettings) -> None:
     """Enforce the paper-only guardrail. See SPEC F2 for the live-money gates."""
     if settings.mode != "paper":

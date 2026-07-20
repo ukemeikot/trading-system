@@ -7,6 +7,7 @@ drag, per the spec — profitability is not a pass condition, honest numbers are
 from __future__ import annotations
 
 from tsys.application.dto import BacktestResult, WalkForwardReport
+from tsys.application.use_cases.validate import ValidationReport
 
 
 def format_backtest(result: BacktestResult, title: str = "Backtest") -> str:
@@ -39,6 +40,23 @@ def format_walkforward(report: WalkForwardReport) -> str:
             f"maxDD={r.max_drawdown_pct:.2f}% cost_drag={_fmt_pct(r.cost_drag_pct)} "
             f"win={r.win_rate:.1f}%/be={r.breakeven_win_rate:.1f}%"
         )
+    return "\n".join(out)
+
+
+def format_validation(report: ValidationReport) -> str:
+    verdict = "PASS" if report.passed_all else "FAIL"
+    out = [
+        f"=== Validation: {report.strategy}  [{verdict}] ===",
+        "  (a failing strategy still yields a valid report -- evidence, not a green number)",
+    ]
+    for c in report.criteria:
+        mark = "PASS" if c.passed else "FAIL"
+        out.append(f"  [{mark}] {c.name}: {c.detail}")
+    out.append("  --- baseline ---")
+    out.append("  " + format_backtest(report.baseline, "default fees").replace("\n", "\n  "))
+    if report.alt_fee is not None:
+        out.append("  --- dual fee schedule (venue maker/taker) ---")
+        out.append("  " + format_backtest(report.alt_fee, "venue fees").replace("\n", "\n  "))
     return "\n".join(out)
 
 
