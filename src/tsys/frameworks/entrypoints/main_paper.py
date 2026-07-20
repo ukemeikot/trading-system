@@ -39,6 +39,7 @@ from tsys.frameworks.config import (
     ensure_paper_mode,
     load_settings,
     load_strategies,
+    param_fingerprint,
 )
 from tsys.frameworks.registry import available, build_strategy
 from tsys.frameworks.reporting import format_daily_report
@@ -66,8 +67,9 @@ def main() -> None:
     risk = RiskManager(RiskPolicy(build_risk_limits(settings)), Decimal(str(args.equity)))
     sizer = PositionSizer(NotionalBounds(min_notional=Decimal("10")))
     repo = SqliteTradeRepository(args.db)
+    strategies_cfg = load_strategies()
     news = list(CsvCalendarSource(settings.calendar.path).load_events())
-    strategy = build_strategy(args.strategy, load_strategies(), market=market, news_events=news)
+    strategy = build_strategy(args.strategy, strategies_cfg, market=market, news_events=news)
 
     feed: MarketDataFeed
     clock: Clock
@@ -84,6 +86,14 @@ def main() -> None:
         clock = SystemClock()
         feed = ReconnectingFeed(lambda: CcxtFeed(pair))
         day = clock.now().date().isoformat()
+
+    # Parameter-freeze guard (SPEC M6): a changed fingerprint resets the observation clock.
+    fingerprint = param_fingerprint(settings, strategies_cfg)
+    previous = repo.last_param_hash()
+    if previous is not None and previous != fingerprint:
+        print("WARNING: risk/cost/strategy parameters changed since the last run -> the M6 "
+              "observation clock resets to week zero (do not change parameters mid-run).")
+    repo.record_run(clock.now().isoformat(), fingerprint)
 
     latency = SqliteLatencyRecorder(repo, clock)
     engine = StreamAndTrade(

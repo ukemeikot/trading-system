@@ -1,0 +1,9 @@
+# Weekly observation report (SPEC M6). Triggered by tsys-report.timer.
+[Unit]
+Description=tsys weekly observation report
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/trading-system
+ExecStart=/opt/trading-system/.venv/bin/python -m tsys.frameworks.entrypoints.main_report \
+    --db /opt/trading-system/data/tsys.sqlite --weeks 1

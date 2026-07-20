@@ -7,6 +7,8 @@ objects (CostConfig, RiskLimits) the use cases need.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from decimal import Decimal
 from pathlib import Path
 
@@ -121,6 +123,22 @@ def build_cost_config(settings: AppSettings) -> CostConfig:
             for symbol, fx in settings.costs.forex.items()
         },
     )
+
+
+def param_fingerprint(settings: AppSettings, strategies_cfg: dict[str, object]) -> str:
+    """Stable short hash of the risk/cost/circuit-breaker/strategy parameters.
+
+    Used to enforce the M6 rule: if this changes during the observation period,
+    the clock resets to week zero. Mode/pairs/timeframes are excluded — only the
+    parameters that affect trading behaviour count."""
+    payload = {
+        "risk": settings.risk.model_dump(),
+        "costs": settings.costs.model_dump(),
+        "circuit_breakers": settings.circuit_breakers.model_dump(),
+        "strategies": strategies_cfg,
+    }
+    blob = json.dumps(payload, sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
 def build_risk_limits(settings: AppSettings) -> RiskLimits:

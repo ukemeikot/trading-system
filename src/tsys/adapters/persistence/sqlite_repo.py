@@ -121,6 +121,56 @@ class SqliteTradeRepository(TradeRepository):
         row = self._conn.execute("SELECT equity FROM equity ORDER BY id DESC LIMIT 1").fetchone()
         return None if row is None else float(row["equity"])
 
+    # -- period (weekly) reporting over [start, end) ISO strings ------------
+    def fills_between(self, start: str, end: str) -> int:
+        row = self._conn.execute(
+            "SELECT COUNT(*) c FROM fills WHERE ts >= ? AND ts < ?", (start, end)
+        ).fetchone()
+        return int(row["c"])
+
+    def kind_counts_between(self, start: str, end: str) -> dict[str, int]:
+        rows = self._conn.execute(
+            "SELECT kind, COUNT(*) c FROM decisions WHERE ts >= ? AND ts < ? GROUP BY kind",
+            (start, end),
+        ).fetchall()
+        return {r["kind"]: r["c"] for r in rows}
+
+    def exit_reason_counts_between(self, start: str, end: str) -> dict[str, int]:
+        rows = self._conn.execute(
+            "SELECT reason, COUNT(*) c FROM decisions WHERE kind IN ('exit','halt') "
+            "AND ts >= ? AND ts < ? GROUP BY reason",
+            (start, end),
+        ).fetchall()
+        return {r["reason"]: r["c"] for r in rows}
+
+    def equity_between(self, start: str, end: str) -> list[tuple[str, float]]:
+        rows = self._conn.execute(
+            "SELECT ts, equity FROM equity WHERE ts >= ? AND ts < ? ORDER BY id", (start, end)
+        ).fetchall()
+        return [(r["ts"], float(r["equity"])) for r in rows]
+
+    def latency_between(self, start: str, end: str) -> dict[str, list[float]]:
+        rows = self._conn.execute(
+            "SELECT stage, micros FROM latency WHERE ts >= ? AND ts < ?", (start, end)
+        ).fetchall()
+        out: dict[str, list[float]] = {}
+        for r in rows:
+            out.setdefault(r["stage"], []).append(r["micros"])
+        return out
+
+    # -- parameter-freeze audit (SPEC M6) ---------------------------------
+    def record_run(self, started_at: str, param_hash: str) -> None:
+        self._conn.execute(
+            "INSERT INTO runs(started_at, param_hash) VALUES(?,?)", (started_at, param_hash)
+        )
+        self._conn.commit()
+
+    def last_param_hash(self) -> str | None:
+        row = self._conn.execute(
+            "SELECT param_hash FROM runs ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        return None if row is None else str(row["param_hash"])
+
 
 class SqliteLatencyRecorder(LatencyRecorder):
     """Writes latency samples to the same DB the repository owns (UTC ts via Clock)."""

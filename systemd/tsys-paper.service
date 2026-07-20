@@ -1,4 +1,6 @@
-# systemd unit for paper-trading service. See docs/SPEC.md M5 / F4. TODO(M5).
+# systemd unit for the paper-trading engine (SPEC M5/M6/F4).
+# Deploy target: small VPS or Raspberry Pi. Paper-only; the app refuses to start
+# if mode != paper. Edit WorkingDirectory / user / the --strategy args to taste.
 [Unit]
 Description=tsys paper trading engine
 After=network-online.target
@@ -8,9 +10,12 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=/opt/trading-system
 EnvironmentFile=/opt/trading-system/.env
-ExecStart=/opt/trading-system/.venv/bin/python -m tsys.frameworks.entrypoints.main_paper
+ExecStart=/opt/trading-system/.venv/bin/python -m tsys.frameworks.entrypoints.main_paper \
+    --strategy quiet_scalper --pair BTC/USDT --market crypto --timeframe 1m \
+    --equity 100 --db /opt/trading-system/data/tsys.sqlite
 Restart=on-failure
 RestartSec=5
+# Restart-recovery reloads open positions from the DB on start.
 
 [Install]
 WantedBy=multi-user.target

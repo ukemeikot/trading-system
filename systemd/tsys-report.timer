@@ -1,0 +1,10 @@
+# Runs the weekly observation report every Monday 00:05 UTC (SPEC M6).
+[Unit]
+Description=Weekly tsys observation report
+
+[Timer]
+OnCalendar=Mon *-*-* 00:05:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

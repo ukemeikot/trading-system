@@ -12,6 +12,7 @@ from tsys.frameworks.config import (
     build_risk_limits,
     ensure_paper_mode,
     load_settings,
+    param_fingerprint,
 )
 
 
@@ -38,3 +39,15 @@ def test_build_risk_limits_from_settings() -> None:
     limits = build_risk_limits(load_settings("config/settings.yaml"))
     assert limits.max_concurrent_positions == 3
     assert limits.kill_switch_drawdown_pct == Decimal("15")
+
+
+def test_param_fingerprint_stable_and_change_sensitive() -> None:
+    s = load_settings("config/settings.yaml")
+    cfg = {"quiet_scalper": {"vwap_band_k": 2.0}}
+    fp1 = param_fingerprint(s, cfg)
+    assert fp1 == param_fingerprint(s, cfg)  # stable / deterministic
+    # a changed strategy parameter changes the fingerprint (M6 clock would reset)
+    assert fp1 != param_fingerprint(s, {"quiet_scalper": {"vwap_band_k": 2.5}})
+    # a changed risk parameter changes it too
+    changed = s.model_copy(update={"risk": s.risk.model_copy(update={"risk_per_trade_pct": 2.0})})
+    assert fp1 != param_fingerprint(changed, cfg)

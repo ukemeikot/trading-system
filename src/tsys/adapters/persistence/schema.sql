@@ -35,6 +35,14 @@ CREATE TABLE IF NOT EXISTS latency (
     micros REAL NOT NULL
 );
 
+-- Parameter-freeze audit (SPEC M6): each run records a fingerprint of the risk/
+-- cost/strategy params. A changed fingerprint means the observation clock resets.
+CREATE TABLE IF NOT EXISTS runs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at TEXT NOT NULL,
+    param_hash TEXT NOT NULL
+);
+
 -- Snapshot of open positions for restart-recovery (one row per pair).
 CREATE TABLE IF NOT EXISTS positions (
     pair        TEXT PRIMARY KEY,

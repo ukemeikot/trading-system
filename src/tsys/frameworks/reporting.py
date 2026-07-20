@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from tsys.application.dto import BacktestResult, WalkForwardReport
 from tsys.application.use_cases.daily_report import DailyReport
+from tsys.application.use_cases.period_report import PeriodReport
 from tsys.application.use_cases.validate import ValidationReport
 
 
@@ -74,6 +75,30 @@ def format_daily_report(report: DailyReport) -> str:
         lines.append("    (none recorded)")
     for stage, (p50, p99) in report.latency.items():
         lines.append(f"    {stage:<16} p50={p50:.1f} p99={p99:.1f}")
+    return "\n".join(lines)
+
+
+def format_period_report(report: PeriodReport) -> str:
+    lines = [
+        f"=== Observation report: {report.start} -> {report.end} ===",
+        f"  net return after costs : {report.net_return_pct:+.2f}%",
+        f"  max drawdown           : {report.max_drawdown_pct:.2f}%   (gate: < 15%)",
+        f"  trades taken           : {report.fills}",
+        f"  risk vetoes            : {report.vetoes}",
+        f"  halts fired            : {report.halts}",
+        "  filter activations     :",
+    ]
+    if report.filter_activations:
+        for name, count in sorted(report.filter_activations.items()):
+            lines.append(f"    {name:<18} {count}")
+    else:
+        lines.append("    (none)")
+    lines.append("  latency (us)           :")
+    if report.latency:
+        for stage, (p50, p99) in report.latency.items():
+            lines.append(f"    {stage:<16} p50={p50:.1f} p99={p99:.1f}")
+    else:
+        lines.append("    (none recorded)")
     return "\n".join(lines)
 
 
