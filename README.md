@@ -112,12 +112,16 @@ Implementation proceeds **milestone by milestone (M0 → M6)** per spec Part E; 
 - **M2 — Data in** ✅ `DownloadHistory` + `CcxtHistory`/forex history (lazy SDK imports) + `ParquetCandleStore`, boundary normalization proving an **identical Candle schema across markets**, `CsvCalendarSource` + `ImportCalendar` with the >7-day stale-calendar failsafe. Forex degrades gracefully without creds. 69 tests.
 - **M3 — Backtester** ✅ Custom **event-driven engine** that fills via the *same* domain `CostModel` the PaperBroker uses (backtest == paper by construction), **lookahead-impossible** (entries fill at the next bar, never the signal-candle close), risk + sizing enforced, next-open/stop/target/time-stop exits. `RunBacktest` + `RunWalkForward`, buy-and-hold & random-entry baselines, cost-drag / breakeven-win-rate reporting. 81 tests. *(backtesting.py was dropped as the engine — its flat-commission broker can't express our maker/taker + spread + slippage + post-only fills without diverging from paper; see the engine module docstring.)*
 - **M4 — Strategies & validation** ✅ `momentum` (EMA-cross), `meanrev` (RSI-extreme), and the primary `quiet_scalper` (session filter, session-anchored VWAP bands, quiet/trend regime gate, scheduled-news blackout, volatility-spike breaker, post-only arm→trigger entries) — all pure `on_candle`, using streaming indicators. **Validation battery** (`RunValidation`): min-trade count, cost-drag kill (>40%), 2× slippage stress, **news + regime filter ablations**, dual fee-schedule run — with pass/fail per criterion. *A failing strategy still produces a valid report; the deliverable is honest evidence, not a green number.* 99 tests.
-  - *Live-only (deferred to M5, documented not silently dropped):* the spread-blowout and consecutive-loss circuit breakers need tick spread / trade-outcome feedback a pure `on_candle` doesn't receive.
-- **M5 — Paper engine, live data** ⬜ next.
+  - *Some circuit breakers are live-only (see M5):* the spread-blowout breaker needs a tick spread; the consecutive-loss breaker needs trade-outcome feedback — both are enforced in the live engine, not the pure `on_candle`.
+- **M5 — Paper engine, live data** ✅ `StreamAndTrade` (feed→strategy→risk→broker→persist, event-driven), `PaperBroker` filling against live prices via the *same* `CostModel` and the *same* shared exit logic (`domain/execution.py`) as the backtester, stateful `RiskManager` (HWM, daily-loss halt, **kill-switch latch**, consecutive-loss halt), `SqliteTradeRepository` decision log + latency histograms, `ReplaySession` (`--replay` drives the identical code path), reconnecting feed with exponential backoff, live `CcxtFeed`, restart-recovery of open positions from the DB, and `GenerateDailyReport` (latency p50/p99, vetoes, halts). 122 tests, incl. e2e replay/kill-switch/reconnect/restart-recovery.
+- **M6 — Observation period** ⬜ 8–12 weeks of frozen-parameter paper trading (calendar time, not code).
 
 ```bash
-python -m tsys.frameworks.entrypoints.main_walkforward --strategy quiet_scalper --pair BTC/USDT --market crypto --timeframe 1m
+python -m tsys.frameworks.entrypoints.main_paper --strategy quiet_scalper --pair BTC/USDT --market crypto --timeframe 1m           # live paper
+python -m tsys.frameworks.entrypoints.main_paper --strategy quiet_scalper --pair BTC/USDT --timeframe 1m --replay                  # replay a recorded run
 ```
+
+> **Paper only.** `main_paper` refuses to start unless `mode: paper` (spec F4). There is no live-order code path; `LiveBrokerStub` raises.
 
 ```bash
 python -m tsys.frameworks.entrypoints.main_download --years 2               # crypto needs no keys

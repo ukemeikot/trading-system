@@ -7,6 +7,7 @@ drag, per the spec — profitability is not a pass condition, honest numbers are
 from __future__ import annotations
 
 from tsys.application.dto import BacktestResult, WalkForwardReport
+from tsys.application.use_cases.daily_report import DailyReport
 from tsys.application.use_cases.validate import ValidationReport
 
 
@@ -58,6 +59,22 @@ def format_validation(report: ValidationReport) -> str:
         out.append("  --- dual fee schedule (venue maker/taker) ---")
         out.append("  " + format_backtest(report.alt_fee, "venue fees").replace("\n", "\n  "))
     return "\n".join(out)
+
+
+def format_daily_report(report: DailyReport) -> str:
+    lines = [
+        f"=== Daily report: {report.day} ===",
+        f"  fills         : {report.fills}",
+        f"  risk vetoes   : {report.vetoes}",
+        f"  halts fired   : {report.halts}",
+        f"  final equity  : {report.final_equity if report.final_equity is not None else 'n/a'}",
+        "  latency (us)  :",
+    ]
+    if not report.latency:
+        lines.append("    (none recorded)")
+    for stage, (p50, p99) in report.latency.items():
+        lines.append(f"    {stage:<16} p50={p50:.1f} p99={p99:.1f}")
+    return "\n".join(lines)
 
 
 def _fmt_pct(v: float) -> str:

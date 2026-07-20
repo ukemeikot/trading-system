@@ -31,6 +31,7 @@ from tsys.application.dto import BacktestConfig, BacktestResult, Trade
 from tsys.application.ports import BacktestEngine
 from tsys.domain.costs import CostConfig, CostModel, CryptoCosts, ForexPairCosts, Liquidity
 from tsys.domain.entities import Candle, Order, OrderType, Signal, SignalKind
+from tsys.domain.execution import OpenPosition, check_exit
 from tsys.domain.risk import PortfolioState, RiskPolicy
 from tsys.domain.sizing import PositionSizer
 from tsys.domain.strategies.base import Strategy
@@ -71,24 +72,6 @@ class _Pending:
     expiry_ts: datetime | None
 
 
-@dataclass(slots=True)
-class _Position:
-    direction: Direction
-    quantity: Decimal
-    entry_ref: float
-    entry_fill: float
-    entry_fee: Decimal
-    stop_price: float
-    target_price: float | None
-    max_hold_minutes: int | None
-    opened_ts: datetime
-    exit_requested: bool = False
-
-    @property
-    def side(self) -> Side:
-        return self.direction.entry_side
-
-
 class EventDrivenBacktestEngine(BacktestEngine):
     def run(
         self,
@@ -110,14 +93,14 @@ class EventDrivenBacktestEngine(BacktestEngine):
         day_realized = Decimal(0)
         current_day = candles[0].ts.date()
 
-        position: _Position | None = None
+        position: OpenPosition | None = None
         pending: _Pending | None = None
         state = strategy.initial_state()
         trades: list[Trade] = []
         curve: list[tuple[datetime, Decimal]] = []
         vetoes = 0
 
-        def close_position(pos: _Position, ref: float, liquidity: Liquidity, reason: str,
+        def close_position(pos: OpenPosition, ref: float, liquidity: Liquidity, reason: str,
                            ts: datetime) -> None:
             nonlocal position, equity, day_realized, hwm
             exit_side = pos.side.opposite
@@ -156,10 +139,10 @@ class EventDrivenBacktestEngine(BacktestEngine):
                 if filled is not None:
                     ref, fill, liquidity = filled
                     entry_fee = cost.fee(_d(fill) * pending.quantity, pair, liquidity).amount
-                    position = _Position(
-                        direction=pending.direction, quantity=pending.quantity, entry_ref=ref,
-                        entry_fill=fill, entry_fee=entry_fee, stop_price=pending.stop_price,
-                        target_price=pending.target_price,
+                    position = OpenPosition(
+                        side=pending.direction.entry_side, quantity=pending.quantity,
+                        entry_ref=ref, entry_fill=fill, entry_fee=entry_fee,
+                        stop_price=pending.stop_price, target_price=pending.target_price,
                         max_hold_minutes=pending.max_hold_minutes, opened_ts=candle.ts,
                     )
                     pending = None
@@ -169,10 +152,9 @@ class EventDrivenBacktestEngine(BacktestEngine):
 
             # -- 2. manage an open position (never on its own entry bar)
             if position is not None and not entry_bar:
-                ex = _check_exit(position, candle)
+                ex = check_exit(position, candle)
                 if ex is not None:
-                    ref, liquidity, reason = ex
-                    close_position(position, ref, liquidity, reason, candle.ts)
+                    close_position(position, ex.ref_price, ex.liquidity, ex.reason, candle.ts)
 
             # -- 3. feed the closed candle to the pure strategy
             signal, state = strategy.on_candle(candle, state)
@@ -232,37 +214,6 @@ def _try_fill(
         return limit, float(cost.fill_price(limit, side, pair, Liquidity.MAKER)), Liquidity.MAKER
     if side is Side.SELL and candle.high >= limit:
         return limit, float(cost.fill_price(limit, side, pair, Liquidity.MAKER)), Liquidity.MAKER
-    return None
-
-
-def _check_exit(pos: _Position, candle: Candle) -> tuple[float, Liquidity, str] | None:
-    """Return (reference_price, liquidity, reason) if the position should close this bar."""
-    long = pos.side is Side.BUY
-
-    # 1. requested / event exit -> market at this bar's open
-    if pos.exit_requested:
-        return candle.open, Liquidity.TAKER, "signal_exit"
-
-    # 2. stop (pessimistic: gaps fill at the worse of stop/open)
-    stop = pos.stop_price
-    if long and candle.low <= stop:
-        return (candle.open if candle.open < stop else stop), Liquidity.TAKER, "stop"
-    if not long and candle.high >= stop:
-        return (candle.open if candle.open > stop else stop), Liquidity.TAKER, "stop"
-
-    # 3. target (resting limit, no gap bonus)
-    tgt = pos.target_price
-    if tgt is not None:
-        if long and candle.high >= tgt:
-            return tgt, Liquidity.MAKER, "target"
-        if not long and candle.low <= tgt:
-            return tgt, Liquidity.MAKER, "target"
-
-    # 4. time stop
-    if pos.max_hold_minutes is not None:
-        if candle.ts >= pos.opened_ts + timedelta(minutes=pos.max_hold_minutes):
-            return candle.close, Liquidity.TAKER, "time_stop"
-
     return None
 
 
