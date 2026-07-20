@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator, Sequence
 from datetime import datetime
 
 from tsys.domain.entities import Candle, Fill, NewsEvent, Order, Position, Tick
+from tsys.domain.values import Pair
 
 
 class Clock(ABC):
@@ -20,6 +21,33 @@ class Clock(ABC):
     @abstractmethod
     def now(self) -> datetime:
         """Current time, UTC, tz-aware."""
+
+
+class HistoricalDataSource(ABC):
+    """Bulk historical candle fetch (REST). Separate from the live MarketDataFeed:
+    downloads are a batch job, streaming is event-driven (M5)."""
+
+    @abstractmethod
+    def fetch_candles(
+        self, pair: Pair, timeframe: str, start: datetime, end: datetime
+    ) -> Sequence[Candle]:
+        """Return closed candles in [start, end], oldest first, normalized to domain."""
+
+
+class CandleRepository(ABC):
+    """Persistence for historical candles (Parquet on disk in the default adapter)."""
+
+    @abstractmethod
+    def write(self, pair: Pair, timeframe: str, candles: Sequence[Candle]) -> int:
+        """Persist candles; return the number of rows written."""
+
+    @abstractmethod
+    def read(self, pair: Pair, timeframe: str) -> Sequence[Candle]:
+        """Load previously-persisted candles, oldest first."""
+
+    @abstractmethod
+    def has(self, pair: Pair, timeframe: str) -> bool:
+        """True if any candles are stored for this pair/timeframe."""
 
 
 class MarketDataFeed(ABC):

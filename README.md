@@ -106,7 +106,14 @@ Implementation proceeds **milestone by milestone (M0 → M6)** per spec Part E; 
 
 - **M0 — Skeleton & guardrails** ✅ CI (ruff + import-linter + mypy --strict + pytest), config with `mode: live` refusal, JSON logging, port ABCs, `LiveBrokerStub`. A forbidden import in `domain/` fails the import-linter contract.
 - **M1 — Domain core** ✅ Entities, values, indicators (atr/vwap/ema/rsi), `CostModel` (exact Decimal cost math, F1 round-trip property test), `PositionSizer` (min-notional floor for $100 accounts), `RiskPolicy`, `RegimeClassifier` — 47 tests, `mypy --strict` clean.
-- **M2 — Data in** ⬜ next.
+- **M2 — Data in** ✅ `DownloadHistory` + `CcxtHistory`/`OandaHistory` (lazy SDK imports) + `ParquetCandleStore`, boundary normalization proving an **identical Candle schema across markets**, `CsvCalendarSource` + `ImportCalendar` with the >7-day stale-calendar failsafe. Forex degrades gracefully without OANDA creds. 69 tests.
+- **M3 — Backtester** ⬜ next.
+
+Run the downloader (crypto needs no keys; forex is skipped without OANDA creds):
+
+```bash
+python -m tsys.frameworks.entrypoints.main_download --years 2
+```
 
 ### Dev quickstart
 
